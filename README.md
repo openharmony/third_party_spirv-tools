@@ -24,9 +24,16 @@ headers, and XML registry.
 
 ## Downloads
 
+The official releases for SPIRV-Tools can be found on LunarG's
+[SDK download page](https://vulkan.lunarg.com/sdk/home).
+
+For convenience, here are also links to the latest builds (HEAD).
+Those are untested automated builds. Those are not official releases, nor
+are guaranteed to work. Official releases builds are in the Vulkan SDK.
+
 <img alt="Linux" src="kokoro/img/linux.png" width="20px" height="20px" hspace="2px"/>[![Linux Build Status](https://storage.googleapis.com/spirv-tools/badges/build_status_linux_clang_release.svg)](https://storage.googleapis.com/spirv-tools/badges/build_link_linux_clang_release.html)
 <img alt="MacOS" src="kokoro/img/macos.png" width="20px" height="20px" hspace="2px"/>[![MacOS Build Status](https://storage.googleapis.com/spirv-tools/badges/build_status_macos_clang_release.svg)](https://storage.googleapis.com/spirv-tools/badges/build_link_macos_clang_release.html)
-<img alt="Windows" src="kokoro/img/windows.png" width="20px" height="20px" hspace="2px"/>[![Windows Build Status](https://storage.googleapis.com/spirv-tools/badges/build_status_windows_release.svg)](https://storage.googleapis.com/spirv-tools/badges/build_link_windows_vs2019_release.html)
+<img alt="Windows" src="kokoro/img/windows.png" width="20px" height="20px" hspace="2px"/>[![Windows Build Status](https://storage.googleapis.com/spirv-tools/badges/build_status_windows_vs2022_release.svg)](https://storage.googleapis.com/spirv-tools/badges/build_link_windows_vs2022_release.html)
 
 [More downloads](docs/downloads.md)
 
@@ -49,17 +56,14 @@ version.  An API call reports the software version as a C-style string.
 
 ## Releases
 
-Some versions of SPIRV-Tools are tagged as stable releases (see
-[tags](https://github.com/KhronosGroup/SPIRV-Tools/tags) on github).
-These versions undergo extra testing.
-Releases are not directly related to releases (or versions) of
-[SPIRV-Headers][spirv-headers].
-Releases of SPIRV-Tools are tested against the version of SPIRV-Headers listed
-in the [DEPS](DEPS) file.
-The release generally uses the most recent compatible version of SPIRV-Headers
-available at the time of release.
-No version of SPIRV-Headers other than the one listed in the DEPS file is
-guaranteed to work with the SPIRV-Tools release.
+The official releases for SPIRV-Tools can be found on LunarG's
+[SDK download page](https://vulkan.lunarg.com/sdk/home).
+
+You can find either the prebuilt, and QA tested binaries, or download the
+SDK Config, which lists the commits to use to build the release from scratch.
+
+GitHub releases are deprecated, and we will not publish new releases until
+further notice.
 
 ## Supported features
 
@@ -76,6 +80,8 @@ guaranteed to work with the SPIRV-Tools release.
 * Assembler only does basic syntax checking.  No cross validation of
   IDs or types is performed, except to check literal arguments to
   `OpConstant`, `OpSpecConstant`, and `OpSwitch`.
+* Where tools expect binary input, a hex stream may be provided instead.  See
+  `spirv-dis --help`.
 
 See [`docs/syntax.md`](docs/syntax.md) for the assembly language syntax.
 
@@ -140,6 +146,7 @@ As of this writing, there are 67 transforms including examples such as:
     decorations.
 * Normalization
   * Compact IDs
+  * Canonicalize IDs
   * CFG cleanup
   * Flatten decorations
   * Merge returns
@@ -294,6 +301,7 @@ For some kinds of development, you may need the latest sources from the third-pa
     git clone https://github.com/google/effcee.git              spirv-tools/external/effcee
     git clone https://github.com/google/re2.git                 spirv-tools/external/re2
     git clone https://github.com/abseil/abseil-cpp.git          spirv-tools/external/abseil_cpp
+    git clone https://github.com/microsoft/mimalloc.git         spirv-tools/external/mimalloc
 
 #### Dependency on Effcee
 
@@ -305,6 +313,26 @@ Effcee itself depends on [RE2][re2], and RE2 depends on [Abseil][abseil-cpp].
 * Otherwise, SPIRV-Tools expects Effcee sources to appear in `external/effcee`,
   RE2 sources to appear in `external/re2`, and Abseil sources to appear in 
   `external/abseil_cpp`.
+
+#### Dependency on mimalloc
+
+SPIRV-Tools may be configured to use the [mimalloc][mimalloc] library to improve memory
+allocation performance.
+
+In the CMake build, usage of mimalloc is controlled by the `SPIRV_TOOLS_USE_MIMALLOC`
+option. This variable defaults on `ON` when building for Windows and `OFF` when building
+for other platforms. Enabling this option on non-Windows platforms is supported and is
+expected to work normally, but this has not been tested as thoroughly and extensively as
+the Windows version. In the future, the `SPIRV_TOOLS_USE_MIMALLOC` option may default to
+`ON` for non-Windows platforms as well.
+
+In order to avoid unexpectedly changing allocation behavior of applications that link
+SPIRV-Tools libraries statically, mimalloc is disabled by default on static libraries.
+The option 'SPIRV_TOOLS_USE_MIMALLOC_IN_STATIC_BUILD' can be used to force the usage of
+mimalloc on static libraries.
+
+*Note*: mimalloc is currently only supported when building with CMake. When using Bazel,
+mimalloc is not used.
 
 ### Source code organization
 
@@ -319,6 +347,7 @@ Effcee itself depends on [RE2][re2], and RE2 depends on [Abseil][abseil-cpp].
 * `external/abseil_cpp`: Location of [Abseil][abseil-cpp] sources, if Abseil is
    not already configured by an enclosing project.
   (The RE2 project already requires Abseil.)
+* `external/mimalloc`: Intended location for [mimalloc][mimalloc] sources, not provided
 * `include/`: API clients should add this directory to the include search path
 * `external/spirv-headers`: Intended location for
   [SPIR-V headers][spirv-headers], not provided
@@ -426,7 +455,7 @@ targets, you need to install CMake Version 2.8.12 or later.
 - [Python 3](http://www.python.org/): for utility scripts and running the test
 suite.
 - [Bazel](https://bazel.build/) (optional): if building the source with Bazel,
-you need to install Bazel Version 5.0.0 on your machine. Other versions may
+you need to install Bazel Version 7.4.0 on your machine. Other versions may
 also work, but are not verified.
 - [Emscripten SDK](https://emscripten.org) (optional): if building the
   WebAssembly module.
@@ -434,20 +463,16 @@ also work, but are not verified.
 SPIRV-Tools is regularly tested with the following compilers:
 
 On Linux
-- GCC version 9.3
+- GCC version 9.4
 - Clang version 10.0
 
 On MacOS
-- AppleClang 11.0
+- AppleClang 15.0
 
 On Windows
-- Visual Studio 2017
-- Visual Studio 2019
 - Visual Studio 2022
 
-Note: Visual Studio 2017 has incomplete c++17 support. We might stop
-testing it soon. Other compilers or later versions may work, but they are not
-tested.
+Note: Other compilers or later versions may work, but they are not tested.
 
 ### CMake options
 
@@ -798,6 +823,7 @@ limitations under the License.
 [effcee]: https://github.com/google/effcee
 [re2]: https://github.com/google/re2
 [abseil-cpp]: https://github.com/abseil/abseil-cpp
+[mimalloc]: https://github.com/microsoft/mimalloc
 [CMake]: https://cmake.org/
 [cpp-style-guide]: https://google.github.io/styleguide/cppguide.html
 [clang-sanitizers]: http://clang.llvm.org/docs/UsersManual.html#controlling-code-generation
